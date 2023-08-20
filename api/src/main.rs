@@ -1,34 +1,20 @@
-use std::net::SocketAddr;
-
 use axum::{
     response::{Html, IntoResponse},
     routing::get,
-    Router, Server,
+    Json, Router, Server,
 };
-use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, Surreal};
-use thiserror::Error;
+use serde_json::json;
+use std::net::SocketAddr;
 
-type Result<T> = std::result::Result<T, Error>;
+pub use self::error::{Error, Result};
+use crate::model::ModelController;
 
-#[derive(Debug, Error)]
-enum Error {
-    #[error(transparent)]
-    Surreal(#[from] surrealdb::Error),
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-}
+mod error;
+mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let db = Surreal::new::<Ws>("localhost:8000").await?;
-
-    db.signin(Root {
-        username: "root",
-        password: "root",
-    })
-    .await?;
-
-    db.use_ns("Prova").use_db("Prova").await?;
+    let mc = ModelController::new().await?;
 
     let routes = Router::new().route("/", get(hello_handler));
 
@@ -42,5 +28,7 @@ async fn main() -> Result<()> {
 }
 
 async fn hello_handler() -> impl IntoResponse {
-    Html("<h1>Hello!!!</h1>")
+    let response = Html("<h1>Hello!!!</h1>");
+
+    dbg!(response.into_response())
 }
